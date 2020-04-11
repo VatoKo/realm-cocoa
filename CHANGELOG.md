@@ -8,6 +8,13 @@ x.y.z Release notes (yyyy-MM-dd)
   queue rather than the thread's run loop. ([PR #6478](https://github.com/realm/realm-cocoa/pull/6478)).
 * Add an option to deliver object and collection notifications to a specific
   serial queue rather than the current thread. ([PR #6478](https://github.com/realm/realm-cocoa/pull/6478)).
+* Add Combine publishers for Realm types. Realm collections have a `.publisher`
+  property which publishes the collection each time it changes, and a
+  `.changesetPublisher` which publishes a `RealmCollectionChange` each time the
+  collection changes. Corresponding publishers for Realm Objects can be
+  obtained with the `publisher()` and `changesetPublisher()` global functions.
+* Extend Combine publishers which output Realm types with a `.freeze()`
+  function which will make the publisher instead output frozen objects.
 
 ### Fixed
 * <How to hit and notice issue? what was the impact?> ([#????](https://github.com/realm/realm-js/issues/????), since v?.?.?)
