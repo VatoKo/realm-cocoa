@@ -20,6 +20,9 @@ x.y.z Release notes (yyyy-MM-dd)
   callback happens to be called on. This means that the Realm instance may be
   stored and reused in further blocks dispatched to that queue, but the queue
   must now be a serial queue.
+* The ObjectChange type in Swift is now generic and includes a reference to the
+  object which changed. When using `observe(on:)` to receive notifications on a
+  dispatch queue, the object will be confined to that queue.
 
 ### Compatibility
 * File format: Generates Realms with format v9 (Reads and upgrades all previous formats)
