@@ -16,6 +16,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////
 
+import Combine
 import SwiftUI
 import RealmSwift
 
@@ -54,6 +55,102 @@ struct RecipeRow: View {
 final class ContentViewState: ObservableObject {
     /// This dict will allow us to store state on the expansion and contraction of rows.
     @Published var sectionState: [Recipe: Bool] = [:]
+}
+
+func foo() {
+
+}
+
+class DownloadProgress: Object {
+    @objc dynamic var bytesWritten: Int64 = 0
+}
+
+class ProgressTrackingDelegate: NSObject, URLSessionDownloadDelegate {
+    public let queue = DispatchQueue(label: "background queue")
+    private var realm: Realm!
+
+    override init() {
+        super.init()
+        queue.sync { realm = try! Realm(queue: queue) }
+    }
+
+    public var operationQueue: OperationQueue {
+        let operationQueue = OperationQueue()
+        operationQueue.underlyingQueue = queue
+        return operationQueue
+    }
+
+    func urlSession(_ session: URLSession,
+                    downloadTask: URLSessionDownloadTask,
+                    didWriteData bytesWritten: Int64,
+                    totalBytesWritten: Int64,
+                    totalBytesExpectedToWrite: Int64) {
+        guard let url = downloadTask.originalRequest?.url?.absoluteString else { return }
+        try! realm.write {
+            let progress = realm.object(ofType: DownloadProgress.self, forPrimaryKey: url)
+            if let progress = progress {
+                progress.bytesWritten = totalBytesWritten
+            } else {
+                realm.create(DownloadProgress.self, value: [
+                    "url": url,
+                    "bytesWritten": bytesWritten
+                ])
+            }
+        }
+    }
+}
+let delegate = ProgressTrackingDelegate()
+let session = URLSession(configuration: URLSessionConfiguration.default,
+                         delegate: delegate,
+                         delegateQueue: delegate.operationQueue)
+
+func setup() {
+}
+
+class Dog: Object, ObjectKeyIdentifable {
+    
+    @objc dynamic var name: String = ""
+    @objc dynamic var age: Int = 0
+}
+
+struct DogGroup {
+    let label: String
+    let dogs: [Dog]
+}
+
+final class DogSource: ObservableObject {
+    @Published var groups: [DogGroup] = []
+
+    private var cancellable: AnyCancellable?
+    init() {
+        cancellable = try! Realm().objects(Dog.self)
+            .publisher
+            .subscribe(on: DispatchQueue(label: "background queue"))
+            .freeze()
+            .map { (dogs: Results<Dog>) -> [DogGroup] in
+                Dictionary(grouping: dogs, by: { $0.age })
+                    .map { DogGroup(label: "\($0)", dogs: $1) }
+                    .sorted(by: { $0.label < $1.label })
+            }
+            .receive(on: DispatchQueue.main)
+            .assertNoFailure()
+            .assign(to: \.groups, on: self)
+    }
+    deinit {
+        cancellable?.cancel()
+    }
+}
+
+struct DogList: View {
+    @ObservedObject var dogs: RealmSwift.List<Dog>
+
+    var body: some View {
+        List {
+            ForEach(dogs) { dog in
+                Text(dog.name)
+            }
+        }
+    }
 }
 
 struct ContentView: View {
